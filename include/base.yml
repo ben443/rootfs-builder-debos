@@ -1,25 +1,30 @@
-{{ $repo := or .repo "https://jbb.ghsq.ga/debpm" }}
-{{ $extra_components := or .extra_components "" }}
+{{ $repo := or .repo "http://http.kali.org/kali" }}
+{{ $extra_components := or .extra_components "non-free contrib" }}
 architecture: {{ .architecture }}
 
 actions:
-    # Add debian-pm repository and disable gpg check since we don't have a keyring yet.
-    # It's still pretty secure thanks to https
+    # Add Kali repository and disable GPG check temporarily
   - action: run
     description: Prepare installing the keyring
     chroot: true
-    command: echo "deb [trusted=yes] {{ $repo }} {{ .suite }} main" > /etc/apt/sources.list.d/debian-pm.list
+    command: echo "deb [trusted=yes] {{ $repo }} kali-rolling main {{ $extra_components }}" > /etc/apt/sources.list.d/kali.list
 
-    # Install the keyring
+    # Install the Kali keyring
   - action: apt
     packages:
-      - debian-pm-archive-keyring
+      - gnupg
+      - dirmngr
 
-    # Turn on the gpg check again
   - action: run
-    description: Add final debian-pm repository
+    description: Import Kali GPG key
     chroot: true
-    command: echo "deb {{ $repo }} {{ .suite }} main {{ $extra_components }}" > /etc/apt/sources.list.d/debian-pm.list
+    command: wget -q -O - https://archive.kali.org/archive-key.asc | gpg --import && gpg --export ED444FF07D8D0BF6 > /etc/apt/trusted.gpg.d/kali-rolling.gpg
+
+    # Update repository with GPG check enabled
+  - action: run
+    description: Add final Kali repository
+    chroot: true
+    command: echo "deb {{ $repo }} kali-rolling main {{ $extra_components }}" > /etc/apt/sources.list.d/kali.list
 
   - action: apt
     packages:
@@ -39,10 +44,9 @@ actions:
       - dropbear-bin
       - dropbear
       - iproute2
-      - debian-pm-repository
-      - initramfs-tools
+      - kali-linux-default
 
   - action: run
-    description: Set hostname
+    description: Set hostname for Kali device
     chroot: true
-    command: echo debian-device > /etc/hostname
+    command: echo kali-device > /etc/hostname
